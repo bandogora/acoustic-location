@@ -43,9 +43,5 @@ serial monitor.
     3. Commit changes with `git commit -m 'commit message'`
 5. Push changes with `git push`
 6. Make a pull request
-7. Request a code review*
+7. Request a code review
 8. Fix conflicts if necessary
-
-*As of right now pull requests do not require code review.
-If you are confident that your code works you can merge the pull request yourself.
-Otherwise request a review from one of the other contributers.
