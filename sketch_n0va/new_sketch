@@ -1,0 +1,271 @@
+//const int LEDs[16] ={21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51};
+unsigned long time;
+
+//Define microphone input signal pins
+#define micOutPin1 A0
+#define micOutPin2 A1
+#define micOutPin3 A2
+#define micOutPin4 A3
+
+// Define output pins
+#define output 2
+#define serialOut 3
+
+// Define comparator threshold value
+#define compThreshold 150
+
+// Clear bit in sfr address
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+// Set bit in sfr address
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+
+// Interupt Service Routine vars
+volatile byte sound = 0;
+volatile long unsigned soundTime;
+const static speed = 340;
+double[][] M;
+double[] RDX;
+double[] difference;
+
+void setup() {
+  // Setup serial out if connection present
+  if(Serial) {
+    Serial.begin(9600);
+    pinMode(serialOut, OUTPUT);
+  }
+  
+  // Enable LEDs out
+  pinMode(output, OUTPUT);
+  analogWrite(output, compThreshold);
+  /* 
+  for(int i=0; i < 16; i++){
+    pinMode(LEDs[i], OUTPUT);
+  } 
+  */
+  
+  // Enable analog in
+  pinMode(micOutPin1, INPUT);
+  pinMode(micOutPin2, INPUT);
+  pinMode(micOutPin3, INPUT);
+  pinMode(micOutPin4, INPUT);
+
+  // Enable comparator interrupt
+  sbi(ADCSRB,ACME);
+  cbi(ADMUX,MUX2);
+  sbi(ADMUX,MUX1);
+  cbi(ADMUX,MUX0);
+  cbi(ADCSRA,ADEN); // Disable ADC
+  ACSR =
+    (0<<ACD) |  // Enable comparator
+    (0<<ACDG) | // Comparator bandgap select AIN0
+    (0<<ACO) |  // Set comparator output off
+    (1<<ACI) |  // Comparator interupt flag
+    (1<<ACIE) | // Enable comparator interupt
+    (0<<ACIC) | // Disable comparator input capture
+    (0<<ACIS1) | (0<ACIS0); // Comparator interrupt on output toggle
+  
+  //for dimension: 30cm*30cm
+  initialize(0.3); 
+}
+ 
+void initialize(int ratio){
+  double[][] S = new double[2][4];
+  S[0][0] = 0;
+  S[1][0] = 0;
+  S[0][1] = 1;
+  S[1][1] = 0;
+  S[0][2] = 1;
+  S[1][2] = 1;
+  S[0][3] = 0;
+  S[1][3] = 1;
+
+  //ratio = actual dimension of the board (in meters) / 1 meter
+  //ratio = 0.3;
+
+  for(int i = 0; i < S.length; i++){
+    for(int j = 0; j < S[0].length; j++){
+      S[i][j] *= ratio;
+    }
+  }
+
+  M = new double[2][25];
+
+  for(int i = 0; i < 25; i ++){
+    M[0,i] = (i%5)*0.25*ratio;
+  }
+  for(int i = 0; i < 25; i ++){
+    M[1,i] = (i/5)*0.25*ratio;
+  }
+}
+
+void loop() {
+  //Read analog
+  int mic1 = analogRead(micOutPin1);
+  int mic2 = analogRead(micOutPin2);
+  int mic3 = analogRead(micOutPin3);
+  int mic4 = analogRead(micOutPin4);
+  //struct distance { int analog, int distance };
+  
+  /*
+ * when(comparator for A0..A3 == 1) {
+ *  time = millis();
+ *  struct distance = { A0, distance(time); }
+ * }
+ */
+ 
+  //struct distances[4] = {};
+  
+  //Find location
+  //int LED = location(distances);
+  if(sound == 1) {
+    if(Serial) {
+      //Write analog value to serial port: 
+      Serial.println(soundTime);
+    }
+    //Turn on Associated LEDs
+    //enable_led(LED);
+    sound = 0; 
+  }
+
+  double[] time = new time[4];
+  time0 = time[0];
+  //some funciton to put absolute arrival time to this time array
+  double[] time_dif = new time[4];
+
+  //let sensor0 as the reference sensor, calculate the differential time arrival for each sensor.
+  for(int i = 0; i < 4; i++){
+    time_dif = time - time0;
+  }
+
+  //RD = zeros(4,25);
+  double[][] RD = new double[4][25];
+  //calculating the RD for all of the sensors for each grid position
+
+  for(int i = 0; i < 4; i++){
+    for(int j = 0; j < 25; j++){
+      RD[i][j] = norm((M[0][j] - S[0][i]), (M[1][j] - S[1][i])) - norm((M[0][j] - S[0][0]), (M[1][j] - S[1][0]));
+    }
+  }
+
+
+  double[] RDX = new double[4];
+  // for i = 2:4
+  //    RDX(i) = c * (Xt(i) - Xt(1));
+  // end
+
+  for(int i = 0; i < 4; i++){
+    RDX[i] = c * time_dif[i];
+  }
+
+  double[] difference = new double[25];
+
+  for(int i = 0; i < 4; i++){
+    for(int j = 0; j < 25; j++){
+      difference[i] = difference[i] + ((RD[i][j]-RDX[i])*10)^5;
+      if(difference[i] < 0)
+        difference[i] = -difference[i];
+    }
+  }
+  
+  double min = difference(0);
+  int loc = 0;
+  for i = 2:25
+      if Difference(i) < min
+         min = Difference(i);
+         loc = i;
+      end
+  end
+
+  for(int i = 0; i < 25; i++){
+    if(difference[i] < min){
+      min = difference[i];
+      loc = i;
+    }
+  }
+
+  //loc is the closest position
+
+}
+
+ISR(ANALOG_COMP_vect) {
+  soundTime = millis();
+  sound=1;
+}
+
+double norm(double x, double y){
+    return sqrt(x^2+x^y);
+}
+
+double[] getTimeFromCoordinate_four_mic(double t0,double x, double y,double[][] S,double c){
+
+    RDXtest = new double[4][25];
+
+
+    for(int i = 1; i < 4; i++){
+       RDXtest[i] = norm(x - S[0][i], X - S[1][i]) - norm(x - S[0][0], y - S[1][0]);
+    }
+    
+    Xt = new double[4];
+    Xt[0] = t0;
+    for(int i = 1; i < 4; i++){
+       Xt[i] = RDXtest[i]/c + Xt[0];
+    }  
+    
+    ert
+
+}
+
+int getClosestLocation_four_mic(double t0,double x, double y,double[][] S,double c, double[][] RD){
+    
+    Xt = getTimeFromCoordinate_four_mic(t0,x,y,S,c);
+
+    RDX = zeros(1,4);
+    RDX = new double[4];
+
+    for(int i = 0; i < 4; i++){
+        RDX[i] = c * (Xt[i] - Xt[0]);
+    }
+
+    Difference = new double[25];
+
+    //caculating the difference
+    for(int i = 0; i < 25; i++){
+      for(int j = 1; j < 4; j++){
+        Difference[i] = Difference[i] + ((RD[j][i]-RDX[j])*10)^5;
+      }
+    }
+    //turning Difference array values to be absolute
+    for(int i = 0; i < Difference.length; i ++){
+        Difference[i]  = abs(Difference[i]);
+    }
+    
+    min = Difference[0];
+    int loc = 1;
+
+    for(int i = 1; i < 25; i++){
+        if(Difference[i] < min){
+            min = Differenc[i];
+            loc = i;
+        }
+    }
+    
+    return loc;  
+}
+
+/*
+int distance(unsigned long time) {
+  //Some calculation of time
+  float distance = math;
+  return distance;
+}
+​
+int location(distances[]) {
+  //Do some algorithm with analog and timestamp
+  int location = math;
+  return location;
+}
+​
+void enable_led(int location) {
+  digitalWrite(location, HIGH); 
+}
+*/
