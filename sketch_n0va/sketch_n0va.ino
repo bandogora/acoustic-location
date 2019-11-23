@@ -1,3 +1,5 @@
+unsigned long time;
+
 //const int LEDs[16] ={21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51};
 
 //Define microphone input signal pins
@@ -24,23 +26,41 @@ void setup() {
   */
   
   // Enable analog in
-  pinMode(micOut1, LOW);
-  pinMode(micOut2, LOW);
-  pinMode(micOut3, LOW);
-  pinMode(micOut4, LOW);
-  
+  pinMode(micOut1, INPUT_PULLUP);
+  //pinMode(micOut2, INPUT_PULLUP);
+  //pinMode(micOut3, INPUT_PULLUP);
+  //pinMode(micOut4, INPUT_PULLUP);
 }
+
+class Mic {
+  public:
+  String name;
+  bool on;
+  unsigned long start_time;
+};
  
 void loop() {
+  //Start time in micros
+  time = micros();
+  
   //Read analog
-  int mic1 = digitalRead(micOut1);
-  int mic2 = digitalRead(micOut2);
-  int mic3 = digitalRead(micOut3);
-  int mic4 = digitalRead(micOut4);
+  bool in1 = digitalRead(micOut1);
+  bool in2 = digitalRead(micOut2);
+  bool in3 = digitalRead(micOut3);
+  bool in4 = digitalRead(micOut4);
 
-  boolean on = (mic1 || mic2 || mic3 || mic4);
-  if( on == true) {
-    Serial.println(micros());
+  boolean on = !(in1 || in2 || in3 || in4);
+  if(on) {
+    
+    Mic mic1;
+    mic1.name = "mic1";
+    mic1.on = in1;
+    mic1.start_time = time;
+
+    Serial.print(mic1.name);
+    Serial.print(" time:");
+    Serial.println(mic1.start_time);
+    delay(100);
     //Start calculatttion
   }
 }
