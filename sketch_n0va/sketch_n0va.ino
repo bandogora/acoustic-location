@@ -14,7 +14,7 @@ unsigned long time;
 void setup() {
   // Setup serial out if connection present
   if(Serial) {
-    Serial.begin(9600);
+    Serial.begin(2000000);
   }
 
   // Enable LEDs out
@@ -30,6 +30,13 @@ void setup() {
   pinMode(micOut2, INPUT_PULLUP);
   //pinMode(micOut3, INPUT_PULLUP);
   //pinMode(micOut4, INPUT_PULLUP);
+
+  /* Timer clock = I/O clock / 1024 */
+  TCCR0B = (1<<CS02)|(1<<CS00);
+  /* Clear overflow flag */
+  TIFR0 = 1<<TOV0;
+  /* Enable Overflow Interrupt */
+  TIMSK0 = 1<<TOIE0;
 }
 
 class Mic {
