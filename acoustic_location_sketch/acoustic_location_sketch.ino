@@ -15,6 +15,8 @@
 
 /* Define lenght */
 unsigned int distance = 0.4;
+volatile double x;
+volatile double y;
 
 /* Define output pins */
 //#define output 31
@@ -83,15 +85,16 @@ void loop() {
     interrupts();                     // Enable arduino interrupts
 
     /* Convert timer tics to seconds */
+    double time_input[4];
     for (int i = 0; i < 4; i++) {
-      icr[i] *= 0.000004;
+      time_input[i] = icr[i] * 0.000004;
     }
 
-    double* pos = getPosFromTimes(icr);
+    getPosFromTimes(time_input);
     Serial.print("x: ");
-    Serial.println(pos[0]);
+    Serial.println(x);
     Serial.print("y: ");
-    Serial.println(pos[1]);
+    Serial.println(y);
     
     /* Determine which pin changed state first */
     
@@ -108,7 +111,7 @@ void loop() {
   }
 }
 
-double* getPosFromTimes(unsigned int Xt[4]) {
+void getPosFromTimes(double Xt[4]) {
   // Xt is an array that stores the TOA for mics from 0 to 3
   // Distance is the length of the side of the square board in meter
 
@@ -204,15 +207,13 @@ double* getPosFromTimes(unsigned int Xt[4]) {
     break;
   }
 
-  double pos[2];
-  pos[0] = x_res;
-  pos[1] = y_res;
+  x = x_res;
+  y = y_res;
 
-  return pos;
 
 }
 
-int minimum_index(unsigned int in[4]) {
+int minimum_index(double in[4]) {
   int mini_index = 0;
   double minimum = in[0];
   for (int i = 0; i < 4;i++) {
