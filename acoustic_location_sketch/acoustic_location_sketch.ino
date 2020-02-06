@@ -9,14 +9,9 @@
 
 /* Define microphone input signal pins */
 #define ICPpin1 14                    // ICP1 - ATmega2560 pin 47
-#define ICPpin3 21                    // ICP3 - ATmega2569 pin 9
+#define ICPpin3 24                    // ICP3 - ATmega2569 pin 9
 #define ICPpin4 49                    // ICP4 - ATmega2560 pin 35
 #define ICPpin5 48                    // ICP5 - ATmega2560 pin 36
-
-/* Define lenght */
-unsigned int distance = 0.4;
-volatile double x;
-volatile double y;
 
 /* Define output pins */
 //#define output 31
@@ -28,200 +23,170 @@ void setup() {
   }
   
   /* Pull up digital input pins */
-  pinMode(ICPpin1, INPUT_PULLUP);
-  pinMode(ICPpin3, INPUT_PULLUP);
-  pinMode(ICPpin4, INPUT_PULLUP);
-  pinMode(ICPpin5, INPUT_PULLUP);
+  pinMode(ICPpin1, INPUT);
+  pinMode(ICPpin3, INPUT);
+  pinMode(ICPpin4, INPUT);
+  pinMode(ICPpin5, INPUT);
 
   /* Timer 1 setup */
-  TIFR1 = (1<<ICF1);                  // Clear pending interupts and Overflow Flag Interrupt
-  TCCR1A = 0;                         // Disable compare interrupts (necessary for arduino) and set WGM to normal mode
-  TCCR1B = (1<<CS11)|(1<<CS10);       // Initiate timer with /64 prescale
-  TIMSK1 = (1<<ICIE1);                // Enable 16-bit Timer Capture Event Interrupt and Overflow Interrupt
+  TIFR1 = (1<<ICF1);    // Clear pending interupts and Overflow Flag Interrupt
+  TCCR1A = 0;           // Disable compare interrupts (necessary for arduino) and set WGM to normal mode
+  TCCR1B = (0<<ICNC1)|  // Turn off noise filtering
+  (1<<ICES1)|           // Set input capture edge to rising
+  (0<<WGM13)|           // Set WGM to normal
+  (0<<WGM12)|
+  (1<<CS11)|            // CS bits set prescale to /64
+  (1<<CS10);
+  TIMSK1 = (1<<ICIE1)|  // Enable 16-bit Timer Capture Event Interrupt
+  (0<<TOIE1);           // Disable Overflow Interrupt
+  TIFR1 = (1<<TOV1);    // Clear timer overflow flag
   
   /* Timer 3 setup */
   TIFR3 = (1<<ICF3);
   TCCR3A = 0;
-  TCCR3B = (1<<CS31)|(1<<CS30);
-  TIMSK1 = (1<<ICIE3);
+  TCCR3B = (0<<ICNC3)|(1<<ICES3)|(0<<WGM33)|(0<<WGM32)|(1<<CS31)|(1<<CS30);
+  TIMSK1 = (1<<ICIE3)|(0<<TOIE3);
+  TIFR3 = (1<<TOV3);
   
   /* Timer 4 setup */
   TIFR4 = (1<<ICF4);
   TCCR4A = 0;
-  TCCR4B = (1<<CS41)|(1<<CS40);
-  TIMSK4 = (1<<ICIE4);
+  TCCR4B = (0<<ICNC4)|(1<<ICES4)|(0<<WGM43)|(0<<WGM42)|(1<<CS41)|(1<<CS40);
+  TIMSK4 = (1<<ICIE4)|(0<<TOIE4);
+  TIFR4 = (1<<TOV4);
   
   /* Timer 5 setup */
   TIFR5 = (1<<ICF5);
   TCCR5A = 0;
-  TCCR5B = (1<<CS51)|(1<<CS50);
-  TIMSK5 = (1<<ICIE5);
+  TCCR5B = (0<<ICNC5)|(1<<ICES5)|(0<<WGM53)|(0<<WGM52)|(1<<CS51)|(1<<CS50);
+  TIMSK5 = (1<<ICIE5)|(0<<TOIE5);
+  TIFR5 = (1<<TOV5);
 }
  
 void loop() {
-  /* Check input for state change */
-  bool in1 = digitalRead(ICPpin1);
-  bool in2 = digitalRead(ICPpin3);
-  bool in3 = digitalRead(ICPpin4);
-  bool in4 = digitalRead(ICPpin5);
-  bool on = !(in1 & in2 & in3 & in4); // Invert for falling edge
-  
-  if (on) {
+  while(1) {
     /* Reset timers */
     TCNT1 = 0;
     TCNT3 = 0;
     TCNT4 = 0;
     TCNT5 = 0;
-    
-    /* Read ICR registers */
-    unsigned char sreg = SREG;        // Save global interrupt flag
-    noInterrupts();                   // Disable arduino interrupts
-    unsigned int icr[4];              // Read ICRs
-    icr[0] = ICR1;
-    icr[1] = ICR3;
-    icr[2] = ICR4;
-    icr[3] = ICR5;
-    SREG = sreg;                      // Restore global interrupt flag
-    interrupts();                     // Enable arduino interrupts
 
-    /* Convert timer tics to seconds */
-    double time_input[4];
-    for (int i = 0; i < 4; i++) {
-      time_input[i] = icr[i] * 0.000004;
+
+    // clear overflow
+    TIFR1 = (1<<TOV1);    // Clear timer overflow flag
+    /* Check input for state change */
+    bool in1 = digitalRead(ICPpin1);
+    bool in2 = digitalRead(ICPpin3);
+    bool in3 = digitalRead(ICPpin4);
+    bool in4 = digitalRead(ICPpin5);
+    bool on = (in1 | in2 | in3 | in4);
+
+    if (on) {
+      // wait for rest of hit to be ltched in by icp perifs
+      delay(20);
+      /*Serial.print((String)in1);
+      Serial.print(" ");
+      Serial.print((String)in2);
+      Serial.print(" ");
+      Serial.print((String)in3);
+      Serial.print(" ");
+      Serial.print((String)in4);
+      Serial.println("");*/
+
+      /*unsigned int icr[4];              // Read ICRs
+      icr[0] = ICR1;
+      icr[1] = ICR3;
+      icr[2] = ICR4;
+      icr[3] = ICR5;*/
+
+      Serial.print((String)ICR1);
+      Serial.print(" ");
+      Serial.print((String)ICR3);
+      Serial.print(" ");
+      Serial.print((String)ICR4);
+      Serial.print(" ");
+      Serial.print((String)ICR5);
+      Serial.println("");
+      
+      
     }
+    
+    
+    if (0) {
+      /* Read ICR registers */
+      unsigned char sreg = SREG;        // Save global interrupt flag
+      noInterrupts();                   // Disable arduino interrupts
+      unsigned int icr[4];              // Read ICRs
+      icr[0] = ICR1;
+      icr[1] = ICR3;
+      icr[2] = ICR4;
+      icr[3] = ICR5;
 
-    getPosFromTimes(time_input);
-    Serial.print("x: ");
-    Serial.println(x);
-    Serial.print("y: ");
-    Serial.println(y);
-    
-    /* Determine which pin changed state first */
-    
-    /* Test
-    Serial.print("Time 1: ");
-    Serial.println(icr[0]);
-    Serial.print("Time 2: ");
-    Serial.println(icr[1]);
-    Serial.print("Time 3: ");
-    Serial.println(icr[2]);
-    Serial.print("Time 4: ");
-    Serial.println(icr[3]);
-    */
+      /* Check for overflow flag and adjust */
+      long max_count = 65536; // 2^16
+      if (TOV1 == 1) {
+        Serial.println("TOV1");
+        //icr[0] += max_count; 
+      };
+      if (TOV3 == 1) {
+        Serial.println("TOV3");
+        //icr[1] += max_count;
+      };
+      if (TOV4 == 1) {
+        Serial.println("TOV4");
+        //icr[2] += max_count;
+      };
+      if (TOV5 == 1) {
+        Serial.println("TOV5");
+        //icr[3] += max_count;
+      };
+      
+      SREG = sreg;                      // Restore global interrupt flag
+      interrupts();                     // Enable arduino interrupts
+      
+      // Test
+      for (int i = 0; i < 4; i++) {
+        Serial.print("Time ");
+        Serial.print(i + 1);
+        Serial.print(":");
+        Serial.println(icr[i]);
+      }
+      delay(100);
+    }
   }
 }
-
-void getPosFromTimes(double Xt[4]) {
-  // Xt is an array that stores the TOA for mics from 0 to 3
-  // Distance is the length of the side of the square board in meter
-
-  //S data structure could be stored as global 
-  double S[4][2] = { {0,0},{1,0},{1,1},{0,1} };
-
-
-  for(int i = 0; i < 4; i++) {
-    for (int j = 0; j < 2; j++) {
-      S[i][j] *= distance;
-    }
-  }
-
-
-  double c = 340;
   
-  int min_index = minimum_index(Xt);
-
-  int x_next = 0;
-  int x_last = 0;
-
-  //min_index = 1;
-
-  switch (min_index) {
-    case 0:
-      x_next = 1;
-      x_last = 3;
-      break;
-    case 1:
-      x_next = 2;
-      x_last = 0;
-      break;
-    case 2:
-      x_next = 3;
-      x_last = 1;
-      break;
-    case 3:
-      x_next = 0;
-      x_last = 2;
-      break;
-  }
-
-  double Xb;
-  double Xc;
-
-  Xb = c * (Xt[x_next] - Xt[min_index]);
-  Xc = c * (Xt[x_last] - Xt[min_index]);
-
-  double A;
-  double B;
-  double C;
-  double delta;
-
-  double r1;
-  double r2;
-
-  double x_res;
-  double y_res;
-
-  
-  A = pow(Xb, 2) + pow(Xc, 2) - 1;
-
-  B = -(  Xb *( 1 - pow(Xb, 2))   +   Xc*(1 - pow(Xc, 2))  );
-
-  C = pow((0.5 - 0.5 * pow(Xb, 2)), 2) + pow((0.5 - 0.5 * pow(Xc, 2)), 2);
-
-  //delta = sqrt(B ^ 2 - 4 * A * C);
-  delta = sqrt(pow(B, 2) - 4 * A * C);
-
-  r1 = (-B + delta) / (2 * A);
-  r2 = (-B - delta) / (2 * A);
-
-  x_res = 0.5 - 0.5 * pow(Xb, 2) - Xb * r2;
-  y_res = 0.5 - 0.5 * pow(Xc, 2) - Xc * r2;
-
-
-  switch (min_index) {
-  case 0:
-    x_res = y_res;
-    y_res = x_res;
-    break;
-  case 1:
-    x_res = distance - y_res;
-    y_res = x_res;
-    break;
-  case 2:
-    x_res = distance - x_res;
-    y_res = distance - y_res;
-    break;
-  case 3:
-    x_res = y_res;
-    y_res = distance - x_res;
-    break;
-  }
-
-  x = x_res;
-  y = y_res;
-
-
-}
-
-int minimum_index(double in[4]) {
-  int mini_index = 0;
-  double minimum = in[0];
-  for (int i = 0; i < 4;i++) {
-    if (minimum > in[i]) {
-      mini_index = i;
-      minimum = in[i];
-    }
-
-  }
-  return mini_index;
-}
+//unsigned int order_times_asc(unsigned int icr[]) {
+//  for(int i = 0; i <= 10; i++) {
+//    for(int j = 0; j <= 10 - i; j++) {
+//      if(icr[j] > icr[j+1]) {
+//        int temp = icr[j];
+//        icr[j]=icr[j+1];
+//        icr[j+1]=temp;
+//      }
+//    }
+//  }
+//  return icr;
+//}
+//
+//
+//
+//unsigned int check_overflow(unsigned int icr[4]) {
+//  // Maximum distance to a mic in mm
+//  int max_dist = 585;
+//  
+//  // Clock tics per secondz
+//  int tics_per_sec = 250000;
+//  
+//  // Speed of sound in mm/s
+//  const int speed_of_sound = 344000;
+//
+//  int max_diff = (max_dist / speed_of_sound) * tics_per_sec; // Should be about 425
+//
+//  for (int i = 3; i > 0; i--) {
+//    int diff = icr[i] - icr[i-1];
+//    if(diff > max_diff) {
+//      icr[i];
+//    }
+//  }
+//}
