@@ -8,25 +8,23 @@
  */
 
 /* Define microphone input signal pins */
-#define ICPpin1 14                    // ICP1 - ATmega2560 pin 47
-#define ICPpin3 24                    // ICP3 - ATmega2569 pin 9
+#define ICPpin1 43                    // ICP1 - ATmega2560 pin 47
+#define ICPpin3 42                    // ICP3 - ATmega2569 pin 9
 #define ICPpin4 49                    // ICP4 - ATmega2560 pin 35
 #define ICPpin5 48                    // ICP5 - ATmega2560 pin 36
 
-/* Define output pins */
-//#define output 31
-
 void setup() {
-  /* Begin serial if present */
-  if (Serial) {
-    Serial.begin(500000);
-  }
+
+  Serial.begin(115200);
   
   /* Pull up digital input pins */
-  pinMode(ICPpin1, INPUT);
-  pinMode(ICPpin3, INPUT);
-  pinMode(ICPpin4, INPUT);
-  pinMode(ICPpin5, INPUT);
+  DDRL |= 0;
+//  pinMode(ICPpin1, INPUT);
+//  pinMode(ICPpin3, INPUT);
+//  pinMode(ICPpin4, INPUT);
+//  pinMode(ICPpin5, INPUT);
+
+//  int max_diff = (max_dist / speed_of_sound) * tics_per_sec; // Should be about 425
 
   /* Timer 1 setup */
   TIFR1 = (1<<ICF1);    // Clear pending interupts and Overflow Flag Interrupt
@@ -61,132 +59,94 @@ void setup() {
   TCCR5B = (0<<ICNC5)|(1<<ICES5)|(0<<WGM53)|(0<<WGM52)|(1<<CS51)|(1<<CS50);
   TIMSK5 = (1<<ICIE5)|(0<<TOIE5);
   TIFR5 = (1<<TOV5);
+
+  
 }
+
+//loop vars
+  unsigned char sreg;
+
  
 void loop() {
+  
+  
   while(1) {
+    /* clear timer overflow flags */
+//    TIFR1 = (1<<TOV1);
+//    TIFR3 = (1<<TOV3);
+//    TIFR4 = (1<<TOV4);
+//    TIFR5 = (1<<TOV5);
+    
     /* Reset timers */
     TCNT1 = 0;
     TCNT3 = 0;
     TCNT4 = 0;
     TCNT5 = 0;
-
-
-    // clear overflow
-    TIFR1 = (1<<TOV1);    // Clear timer overflow flag
+      
     /* Check input for state change */
-    bool in1 = digitalRead(ICPpin1);
-    bool in2 = digitalRead(ICPpin3);
-    bool in3 = digitalRead(ICPpin4);
-    bool in4 = digitalRead(ICPpin5);
-    bool on = (in1 | in2 | in3 | in4);
-
-    if (on) {
-      // wait for rest of hit to be ltched in by icp perifs
-      delay(20);
-      /*Serial.print((String)in1);
-      Serial.print(" ");
-      Serial.print((String)in2);
-      Serial.print(" ");
-      Serial.print((String)in3);
-      Serial.print(" ");
-      Serial.print((String)in4);
-      Serial.println("");*/
-
-      /*unsigned int icr[4];              // Read ICRs
-      icr[0] = ICR1;
-      icr[1] = ICR3;
-      icr[2] = ICR4;
-      icr[3] = ICR5;*/
-
-      Serial.print((String)ICR1);
-      Serial.print(" ");
-      Serial.print((String)ICR3);
-      Serial.print(" ");
-      Serial.print((String)ICR4);
-      Serial.print(" ");
-      Serial.print((String)ICR5);
-      Serial.println("");
-      
-      
-    }
+//    bool in1 = digitalRead(ICPpin1);
+//    bool in2 = digitalRead(ICPpin3);
+//    bool in3 = digitalRead(ICPpin4);
+//    bool in4 = digitalRead(ICPpin5);
+//    bool on = (in1 | in2 | in3 | in4);
+    //bool on = ((PINL & 0b10000000) | (PINL & 0b01000000) | (PINL & 0b00000010) | (PINL & 0b00000001)); 
+   // bool on = (PINL & 0b11000011);
     
-    
-    if (0) {
+    if (PINL & 0b11000011) {
+      
       /* Read ICR registers */
-      unsigned char sreg = SREG;        // Save global interrupt flag
+      sreg = SREG;      // Save global interrupt flag, neccessary for avr
       noInterrupts();                   // Disable arduino interrupts
-      unsigned int icr[4];              // Read ICRs
-      icr[0] = ICR1;
-      icr[1] = ICR3;
-      icr[2] = ICR4;
-      icr[3] = ICR5;
+
+      delay(20);
+
+      Serial.print("Time 1: ");
+      Serial.println((unsigned int)ICR5 * 4);
+      Serial.print("Time 2: ");
+      Serial.println((unsigned int)ICR4 * 4);
+      Serial.print("Time 3: ");
+      Serial.println((unsigned int)ICR3 * 4);
+      Serial.print("Time 4: ");
+      Serial.println((unsigned int)ICR1 * 4);
+
+      
+//      unsigned int icr[4];              // Read ICRs
+//      icr[0] = ICR1;
+//      icr[1] = ICR3;
+//      icr[2] = ICR4;
+//      icr[3] = ICR5;
 
       /* Check for overflow flag and adjust */
-      long max_count = 65536; // 2^16
-      if (TOV1 == 1) {
-        Serial.println("TOV1");
-        //icr[0] += max_count; 
-      };
-      if (TOV3 == 1) {
-        Serial.println("TOV3");
-        //icr[1] += max_count;
-      };
-      if (TOV4 == 1) {
-        Serial.println("TOV4");
-        //icr[2] += max_count;
-      };
-      if (TOV5 == 1) {
-        Serial.println("TOV5");
-        //icr[3] += max_count;
-      };
+//      long max_count = 65536; // 2^16
+//      if (TOV1 == 1) {
+//        Serial.println("TOV1");
+//        //icr[0] += max_count; 
+//      };
+//      if (TOV3 == 1) {
+//        Serial.println("TOV3");
+//        //icr[1] += max_count;
+//      };
+//      if (TOV4 == 1) {
+//        Serial.println("TOV4");
+//        //icr[2] += max_count;
+//      };
+//      if (TOV5 == 1) {
+//        Serial.println("TOV5");
+//        //icr[3] += max_count;
+//      };
+
+      TIFR1 = (1<<ICF1);
+      TIFR3 = (1<<ICF3);
+      TIFR4 = (1<<ICF4);
+      TIFR5 = (1<<ICF5);
       
       SREG = sreg;                      // Restore global interrupt flag
       interrupts();                     // Enable arduino interrupts
       
       // Test
-      for (int i = 0; i < 4; i++) {
-        Serial.print("Time ");
-        Serial.print(i + 1);
-        Serial.print(":");
-        Serial.println(icr[i]);
-      }
-      delay(100);
+      
+      Serial.println("-----------------------");
+      //delay(500);
     }
   }
 }
-  
-//unsigned int order_times_asc(unsigned int icr[]) {
-//  for(int i = 0; i <= 10; i++) {
-//    for(int j = 0; j <= 10 - i; j++) {
-//      if(icr[j] > icr[j+1]) {
-//        int temp = icr[j];
-//        icr[j]=icr[j+1];
-//        icr[j+1]=temp;
-//      }
-//    }
-//  }
-//  return icr;
-//}
-//
-//
-//
-//unsigned int check_overflow(unsigned int icr[4]) {
-//  // Maximum distance to a mic in mm
-//  int max_dist = 585;
-//  
-//  // Clock tics per secondz
-//  int tics_per_sec = 250000;
-//  
-//  // Speed of sound in mm/s
-//  const int speed_of_sound = 344000;
-//
-//  int max_diff = (max_dist / speed_of_sound) * tics_per_sec; // Should be about 425
-//
-//  for (int i = 3; i > 0; i--) {
-//    int diff = icr[i] - icr[i-1];
-//    if(diff > max_diff) {
-//      icr[i];
-//    }
-//  }
-//}
