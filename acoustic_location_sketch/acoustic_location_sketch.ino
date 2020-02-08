@@ -1,30 +1,20 @@
-/* 
- * README:
- * This program makes some assumptions.
- * 1. You are using an ATmega2560 or Arduino Mega
- * 2. You have access to all 4 16-bit timers (Requires physical modification on Arduino)
- * 3. Your microphones input signal is digital
- * 4. You are using an inverting comparator (Falling edge trigger)
- */
+#include <avr/interrupt.h>
+#include <util/atomic.h>
 
 /* Define microphone input signal pins */
-#define ICPpin1 43                    // ICP1 - ATmega2560 pin 47
-#define ICPpin3 42                    // ICP3 - ATmega2569 pin 9
-#define ICPpin4 49                    // ICP4 - ATmega2560 pin 35
-#define ICPpin5 48                    // ICP5 - ATmega2560 pin 36
+//#define ICPpin1 43  // ICP1 - ATmega2560 pin 47
+//#define ICPpin3 42  // ICP3 - ATmega2569 pin 9
+//#define ICPpin4 49  // ICP4 - ATmega2560 pin 35
+//#define ICPpin5 48  // ICP5 - ATmega2560 pin 36
 
 void setup() {
-
   Serial.begin(115200);
   
-  /* Pull up digital input pins */
+  /* Set all pins on PORTL to input mode.
+   *  Arduino pins 42, 43, 48, and 49 all belong
+   *  to this port as found on the data sheet.
+   */
   DDRL |= 0;
-//  pinMode(ICPpin1, INPUT);
-//  pinMode(ICPpin3, INPUT);
-//  pinMode(ICPpin4, INPUT);
-//  pinMode(ICPpin5, INPUT);
-
-//  int max_diff = (max_dist / speed_of_sound) * tics_per_sec; // Should be about 425
 
   /* Timer 1 setup */
   TIFR1 = (1<<ICF1);    // Clear pending interupts and Overflow Flag Interrupt
@@ -59,17 +49,12 @@ void setup() {
   TCCR5B = (0<<ICNC5)|(1<<ICES5)|(0<<WGM53)|(0<<WGM52)|(1<<CS51)|(1<<CS50);
   TIMSK5 = (1<<ICIE5)|(0<<TOIE5);
   TIFR5 = (1<<TOV5);
-
   
+/* Enable global interrupts */
+sei();
 }
-
-//loop vars
-  unsigned char sreg;
-
  
 void loop() {
-  
-  
   while(1) {
     /* clear timer overflow flags */
 //    TIFR1 = (1<<TOV1);
@@ -82,71 +67,49 @@ void loop() {
     TCNT3 = 0;
     TCNT4 = 0;
     TCNT5 = 0;
-      
-    /* Check input for state change */
-//    bool in1 = digitalRead(ICPpin1);
-//    bool in2 = digitalRead(ICPpin3);
-//    bool in3 = digitalRead(ICPpin4);
-//    bool in4 = digitalRead(ICPpin5);
-//    bool on = (in1 | in2 | in3 | in4);
-    //bool on = ((PINL & 0b10000000) | (PINL & 0b01000000) | (PINL & 0b00000010) | (PINL & 0b00000001)); 
-   // bool on = (PINL & 0b11000011);
-    
+
+    /* Check PORTL pins 0, 1, 6, and 7 for HIGH value */
     if (PINL & 0b11000011) {
-      
-      /* Read ICR registers */
-      sreg = SREG;      // Save global interrupt flag, neccessary for avr
-      noInterrupts();                   // Disable arduino interrupts
+      /* Disable global interrupts, and restore sreg state upon exit */
+      ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        /* Wait one cycle.
+         *  one cycle =
+        */
+        delay(20);
 
-      delay(20);
+        /* The max difference in tics will equal: (max_dist / speed_of_sound) * tics_per_sec
+         *  With a clock of of 250kHz each tick is 1/4 of a micro second, so multiply by 4 to
+         *  get real time in micro seconds.
+        */
+        Serial.print("Time 1: ");
+        Serial.println((unsigned int)ICR5 * 4);
+        Serial.print("Time 2: ");
+        Serial.println((unsigned int)ICR4 * 4);
+        Serial.print("Time 3: ");
+        Serial.println((unsigned int)ICR3 * 4);
+        Serial.print("Time 4: ");
+        Serial.println((unsigned int)ICR1 * 4);
 
-      Serial.print("Time 1: ");
-      Serial.println((unsigned int)ICR5 * 4);
-      Serial.print("Time 2: ");
-      Serial.println((unsigned int)ICR4 * 4);
-      Serial.print("Time 3: ");
-      Serial.println((unsigned int)ICR3 * 4);
-      Serial.print("Time 4: ");
-      Serial.println((unsigned int)ICR1 * 4);
+        /* Store ICR values to export */
+  //      unsigned int icr[4];
+  //      icr[0] = ICR1;
+  //      icr[1] = ICR3;
+  //      icr[2] = ICR4;
+  //      icr[3] = ICR5;
 
-      
-//      unsigned int icr[4];              // Read ICRs
-//      icr[0] = ICR1;
-//      icr[1] = ICR3;
-//      icr[2] = ICR4;
-//      icr[3] = ICR5;
+        /* We should never run into an overflow because we reset the clocks before each loop.
+         *  To check for overflow look at the overflow flag: TOVn
+         */
 
-      /* Check for overflow flag and adjust */
-//      long max_count = 65536; // 2^16
-//      if (TOV1 == 1) {
-//        Serial.println("TOV1");
-//        //icr[0] += max_count; 
-//      };
-//      if (TOV3 == 1) {
-//        Serial.println("TOV3");
-//        //icr[1] += max_count;
-//      };
-//      if (TOV4 == 1) {
-//        Serial.println("TOV4");
-//        //icr[2] += max_count;
-//      };
-//      if (TOV5 == 1) {
-//        Serial.println("TOV5");
-//        //icr[3] += max_count;
-//      };
-
-      TIFR1 = (1<<ICF1);
-      TIFR3 = (1<<ICF3);
-      TIFR4 = (1<<ICF4);
-      TIFR5 = (1<<ICF5);
-      
-      SREG = sreg;                      // Restore global interrupt flag
-      interrupts();                     // Enable arduino interrupts
-      
-      // Test
-      
+        /* Clear pending interupts before restoring global interrupts so we don't
+         *  immeadiatly trigger the check loop again.
+         */
+        TIFR1 = (1<<ICF1);
+        TIFR3 = (1<<ICF3);
+        TIFR4 = (1<<ICF4);
+        TIFR5 = (1<<ICF5);
+      }
       Serial.println("-----------------------");
-      //delay(500);
     }
   }
 }
