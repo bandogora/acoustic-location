@@ -11,8 +11,6 @@
 //#define ICPpin5 48  // ICP5 - ATmega2560 pin 36
 
 void setup() {
-  Serial.begin(115200);
-  
   /* Set all pins on PORTL to input mode.
    *  Arduino pins 42, 43, 48, and 49 all belong
    *  to this port as found on the data sheet.
@@ -31,33 +29,32 @@ void setup() {
   TIMSK1 = (1<<ICIE1)|  // Enable 16-bit Timer Capture Event Interrupt
   (0<<TOIE1);           // Disable Overflow Interrupt
   //TIFR1 = (1<<TOV1);    // Clear timer overflow flag
-  
+
   /* Timer 3 setup */
   TIFR3 = (1<<ICF3);
   TCCR3A = 0;
   TCCR3B = (0<<ICNC3)|(1<<ICES3)|(0<<WGM33)|(0<<WGM32)|(1<<CS31)|(1<<CS30);
   TIMSK1 = (1<<ICIE3)|(0<<TOIE3);
   //TIFR3 = (1<<TOV3);
-  
+
   /* Timer 4 setup */
   TIFR4 = (1<<ICF4);
   TCCR4A = 0;
   TCCR4B = (0<<ICNC4)|(1<<ICES4)|(0<<WGM43)|(0<<WGM42)|(1<<CS41)|(1<<CS40);
   TIMSK4 = (1<<ICIE4)|(0<<TOIE4);
   //TIFR4 = (1<<TOV4);
-  
+
   /* Timer 5 setup */
   TIFR5 = (1<<ICF5);
   TCCR5A = 0;
   TCCR5B = (0<<ICNC5)|(1<<ICES5)|(0<<WGM53)|(0<<WGM52)|(1<<CS51)|(1<<CS50);
   TIMSK5 = (1<<ICIE5)|(0<<TOIE5);
   //TIFR5 = (1<<TOV5);
-  
+
 /* Enable global interrupts */
 sei();
-Serial.println("Setup");
 }
- 
+
 void loop() {
   while(1) {
     /* clear timer overflow flags */
@@ -66,25 +63,11 @@ void loop() {
 //    TIFR4 = (1<<TOV4);
 //    TIFR5 = (1<<TOV5);
 
-       if (TOV1 == 1) {
-          Serial.println("TOV1");
-        };
-        if (TOV3 == 1) {
-          Serial.println("TOV3");
-        };
-        if (TOV4 == 1) {
-          Serial.println("TOV4");
-        };
-        if (TOV5 == 1) {
-          Serial.println("TOV5"); 
-        };
-    
     /* Reset timers */
     TCNT1 = 0;
     TCNT3 = 0;
     TCNT4 = 0;
     TCNT5 = 0;
-    
 
     /* Check PORTL pins 0, 1, 6, and 7 for HIGH value */
     if (PINL & 0b11000011) {
@@ -94,14 +77,6 @@ void loop() {
          *  With a clock of of 250kHz each tick is 1/4 of a micro second, so multiply by 4 to
          *  get real time in micro seconds.
         */
-        Serial.print("Time 1: ");
-        Serial.println(ICR1);
-        Serial.print("Time 2: ");
-        Serial.println(ICR3);
-        Serial.print("Time 3: ");
-        Serial.println(ICR4);
-        Serial.print("Time 4: ");
-        Serial.println(ICR5);
 
         /* We should never run into an overflow because we reset the clocks before each loop.
          *  To check for overflow look at the overflow flag: TOVn
@@ -115,9 +90,7 @@ void loop() {
         TIFR4 = (1<<ICF4);
         TIFR5 = (1<<ICF5);
       }
-      Serial.println("-----------------------");
       _delay_ms(525);
     }
   }
-  Serial.println("Exit while");
 }
